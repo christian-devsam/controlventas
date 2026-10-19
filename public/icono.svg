@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- Ícono de pestaña y reserva del manifest. Dibujado, no recortado del
+       logo: a 16px un recorte del emblema completo es una mancha ilegible,
+       así que acá va sólo la planta sobre el rosado de la marca. -->
+  <rect width="100" height="100" rx="22" fill="#d81b76"/>
+  <g transform="translate(50 56)">
+    <path d="M -15 4 L 15 4 L 11.5 26 Q 11.5 29 8.5 29 L -8.5 29 Q -11.5 29 -11.5 26 Z" fill="#f6dfe3"/>
+    <ellipse cx="0" cy="4" rx="15" ry="3" fill="#e4bfc6"/>
+    <g fill="#ffffff">
+      <ellipse cx="0" cy="-17" rx="8" ry="15"/>
+      <ellipse cx="-14" cy="-8" rx="7" ry="13" transform="rotate(-34 -14 -8)"/>
+      <ellipse cx="14" cy="-8" rx="7" ry="13" transform="rotate(34 14 -8)"/>
+    </g>
+    <path d="M 0 2 L 0 -28" stroke="#ffffff" stroke-width="2.4" fill="none"/>
+  </g>
+</svg>

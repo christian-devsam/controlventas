@@ -22,6 +22,7 @@ Entrá a **Supabase → SQL Editor → New query** y pegá los archivos de
 | `0003_datos_iniciales.sql` | ~25 plantas y 7 promociones de arranque |
 | `0004_funciones.sql` | Guardar venta, anular, mover stock |
 | `0005_panel.sql` | Agregados del dashboard por período |
+| `0006_acceso.sql` | Cierra el acceso directo a la base y arma el freno de intentos |
 
 > No uso el connection string directo (`db.<proyecto>.supabase.co:5432`) a
 > propósito. Desde Vercel cada función serverless abriría su propia conexión y
@@ -35,12 +36,12 @@ Entrá a **Supabase → SQL Editor → New query** y pegá los archivos de
 cp .env.local.example .env.local
 ```
 
-Completá `NEXT_PUBLIC_SUPABASE_ANON_KEY` con la llave **anon public** de
-*Supabase → Project Settings → API*.
+Cuatro valores:
 
-Esa llave es pública y está bien que lo sea: todas las tablas tienen RLS
-activo, así que sin una sesión válida no devuelve ni una fila. La llave
-`service_role` **no** se usa en este proyecto y no debe ponerse acá.
+- `NEXT_PUBLIC_SUPABASE_URL` — de *Project Settings → API*
+- `SUPABASE_SERVICE_ROLE_KEY` — la llave **service_role** (no la anon)
+- `APP_PIN` — los 4 dígitos que escribe Camila
+- `SESION_SECRETO` — generalo con `openssl rand -base64 32`
 
 ### c) Correr
 
@@ -49,20 +50,65 @@ npm install
 npm run dev
 ```
 
-La primera vez pedí un código a tu correo en `/login`. Supabase te deja entrar
-sin que haya que crear usuario antes.
+La primera vez escribís el PIN. Queda guardado un año en ese teléfono.
+
+### c-bis) Cómo funciona el acceso
+
+Vale la pena entenderlo, porque es poco común y es lo que hace que no haya
+pantalla de login:
+
+**El navegador no tiene ninguna credencial de base de datos.** Todas las
+lecturas son Server Components y todas las escrituras son Server Actions, así
+que la llave de Supabase nunca sale del servidor. El código que se descarga al
+teléfono no contiene nada con que consultar la base.
+
+Esto es **más** seguro que el login por correo que había antes: en aquel
+esquema la `anon key` sí viajaba al navegador y la seguridad dependía de que
+las políticas RLS estuvieran bien escritas. Ahora no hay superficie que
+proteger.
+
+El PIN sólo decide si se entrega una cookie firmada con HMAC-SHA256 (`src/lib/sesion.ts`).
+La cookie guarda una fecha de vencimiento firmada, no un "sí" — sin el secreto
+del servidor no se puede fabricar una válida.
+
+Tres detalles que no son obvios:
+
+- **Freno de intentos.** 4 dígitos son 10.000 combinaciones; sin freno un
+  script las prueba todas en minutos. Hay un máximo de 5 fallos por IP cada 15
+  minutos, y el contador vive en Postgres: en Vercel cada request puede caer en
+  una instancia distinta, así que un contador en memoria se reiniciaría solo y
+  no frenaría nada.
+- **El bloqueo se evalúa antes de comparar el PIN.** Si se comprobara después,
+  a quien está probando combinaciones le bastaría con acertar en algún intento
+  para entrar.
+- **La comparación es en tiempo constante.** Un `===` corta en el primer
+  carácter distinto, y esa diferencia de tiempo es medible.
+
+El PIN vive en `APP_PIN`, sin prefijo `NEXT_PUBLIC_`, así que Next nunca lo
+incluye en el bundle.
 
 ### d) Deploy en Vercel
 
 1. Conectá el repo en Vercel (detecta Next.js solo, no hace falta configurar nada).
-2. Agregá las tres variables de `.env.local` en *Settings → Environment Variables*.
-   `NEXT_PUBLIC_SITE_URL` tiene que ser el dominio de Vercel.
-3. En *Supabase → Authentication → URL Configuration*, agregá
-   `https://tu-dominio.vercel.app/auth/callback` a **Redirect URLs**. Sin esto
-   el enlace del correo rebota.
+2. Agregá las cuatro variables de `.env.local` en *Settings → Environment Variables*.
+
+No hay nada que configurar en Supabase: la app no usa Supabase Auth.
 
 Después, desde el celular: abrir el sitio → "Agregar a pantalla de inicio".
 Queda como una app, sin barra de direcciones.
+
+### El logo
+
+Guardá la imagen del logo como **`public/logo.png`** (cuadrada, idealmente
+512×512). La app la toma automáticamente para la pantalla de entrada, la
+cabecera y el ícono de la pantalla de inicio.
+
+Mientras el archivo no esté, se dibuja un emblema de reserva en SVG con los
+mismos colores, así nada se ve roto.
+
+Si tenés una versión con **sólo el emblema circular** (sin la foto), usá esa:
+como ícono de app se recorta a un cuadrado chico, y una ilustración completa
+queda ilegible a ese tamaño.
 
 ---
 
@@ -120,6 +166,7 @@ triggers desde las líneas — así no hay forma de guardar una venta descuadrad
 
 | Ruta | Para qué |
 |---|---|
+| `/entrar` | PIN de 4 dígitos. Se ve una vez por teléfono. |
 | `/vender` | Registrar la venta. Es la pantalla de arranque. |
 | `/ventas` | Historial por día, con detalle y anulación. |
 | `/plantas` | Catálogo, precios, stock, reposición. |
@@ -266,14 +313,15 @@ Honestidad sobre qué está probado y qué no:
 | | |
 |---|---|
 | ✅ `tsc --noEmit` | sin errores |
-| ✅ `npm run build` | compila, 10 rutas generadas |
-| ✅ Render en móvil (375×812) | `/login` renderiza, 0 errores de consola |
-| ✅ Guardia de sesión | `/` sin sesión redirige a `/login` |
+| ✅ `npm run build` | compila; las 4 pantallas de datos salen dinámicas |
+| ✅ Render en móvil (375×812) | `/entrar` entra sin scroll, 0 errores de consola |
+| ✅ Guardia de acceso | `/vender` sin cookie redirige a `/entrar` |
+| ✅ Teclado de PIN | 4 dígitos, autoenvío, error y recuperación probados |
 | ✅ Tokens de color | medidos en el navegador en claro y oscuro |
-| ✅ Contraste del botón | 5.02:1 medido en vivo (AA necesita 4.5:1) |
+| ✅ Contraste del rosado | 4.72:1 medido en vivo sobre superficie clara |
 | ✅ Paleta categórica | validada con script en ambos modos |
 | ⚠️ **El SQL no se ejecutó nunca** | revisado a mano, no corrido contra Postgres |
-| ⚠️ **El flujo de venta no se probó end-to-end** | falta la anon key para conectar |
+| ⚠️ **El flujo de venta no se probó end-to-end** | falta la service_role key real |
 
 Los dos puntos amarillos se cierran igual: aplicá las migraciones y registrá una
 venta de prueba. Si algo falla, va a ser en el SQL.
