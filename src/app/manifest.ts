@@ -17,21 +17,19 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     orientation: "portrait",
     background_color: "#f9f9f7",
-    theme_color: "#15803d",
+    theme_color: "#d81b76",
     lang: "es-CL",
     icons: [
       {
-        // SVG inline como data URI: evita tener que generar y versionar PNGs
-        // en varios tamaños para un ícono que es una sola planta.
-        src:
-          "data:image/svg+xml," +
-          encodeURIComponent(
-            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">' +
-              '<rect width="100" height="100" rx="22" fill="#15803d"/>' +
-              '<text x="50" y="50" font-size="58" text-anchor="middle" ' +
-              'dominant-baseline="central">🪴</text>' +
-              "</svg>",
-          ),
+        // Si guardaste `public/logo.png`, este es el ícono que usa el teléfono
+        // al agregar la app a la pantalla de inicio.
+        src: "/logo.png",
+        sizes: "512x512",
+        type: "image/png",
+      },
+      {
+        // Reserva mientras no exista el PNG, e ícono de la pestaña.
+        src: "/icono.svg",
         sizes: "any",
         type: "image/svg+xml",
       },

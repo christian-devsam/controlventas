@@ -4,6 +4,10 @@ import Catalogo from "./Catalogo";
 
 export const metadata = { title: "Plantas · Plantas de Camila" };
 
+/* Sin esto Next prerenderiza la página en el build y el stock queda
+   congelado. Ver la nota larga en vender/page.tsx. */
+export const dynamic = "force-dynamic";
+
 export default async function PaginaPlantas() {
   const supabase = await createClient();
 

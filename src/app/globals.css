@@ -12,11 +12,19 @@
 
 :root {
   /* --- Marca -------------------------------------------------------------
-     Verde con 5.02:1 contra texto blanco → los botones principales cumplen
-     WCAG AA en los dos modos sin necesidad de dos valores. */
-  --marca: #15803d;
-  --marca-suave: #dcf0e3;
-  --marca-borde: #a9d8bb;
+     El rosado del logo. 4.84:1 contra texto blanco → los botones cumplen
+     WCAG AA, y 3.60:1 contra la superficie oscura → también se ve en modo
+     oscuro, con un solo valor para los dos modos.
+
+     El rosado exacto del logo (#e5187f) da 4.40:1, justo por debajo del
+     mínimo de 4.5, así que se oscureció lo mínimo necesario para cumplir.
+
+     Ojo: este color NO aparece en ningún gráfico. La paleta de datos es la de
+     más abajo. Si el color de marca fuera también un color de serie, un botón
+     y una línea del gráfico significarían lo mismo sin significarlo. */
+  --marca: #d81b76;
+  --marca-suave: #fce7f1;
+  --marca-borde: #f3b6d3;
 
   /* --- Superficies e ink ------------------------------------------------- */
   --plano: #f9f9f7;
@@ -76,9 +84,9 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --marca: #15803d;
-    --marca-suave: #10281a;
-    --marca-borde: #255f3c;
+    --marca: #d81b76;
+    --marca-suave: #2b1020;
+    --marca-borde: #5e2444;
 
     --plano: #0d0d0d;
     --superficie: #1a1a19;

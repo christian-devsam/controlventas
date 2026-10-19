@@ -5,6 +5,10 @@ import FilaVenta from "./FilaVenta";
 
 export const metadata = { title: "Ventas · Plantas de Camila" };
 
+/* Sin esto Next prerenderiza la página en el build y el historial queda
+   congelado. Ver la nota larga en vender/page.tsx. */
+export const dynamic = "force-dynamic";
+
 /** Agrupa las ventas por día (en hora de Santiago) para mostrar subtotales. */
 function porDia(ventas: VentaDetalle[]) {
   const grupos = new Map<string, { ventas: VentaDetalle[]; total: number }>();

@@ -1,34 +1,33 @@
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import "server-only";
+import { createClient as crearClienteSupabase } from "@supabase/supabase-js";
 
 /**
- * Cliente de Supabase para Server Components y Server Actions.
+ * Cliente de Supabase. Sólo servidor.
  *
- * `cookies()` es asíncrono desde Next 15, así que esta función devuelve una
- * promesa y hay que llamarla con `await createClient()`.
+ * El `import "server-only"` de arriba no es decorativo: si algún día alguien
+ * importa este archivo desde un componente con `"use client"`, la build FALLA
+ * en vez de mandar la llave `service_role` al navegador. Es la diferencia
+ * entre un error de compilación y filtrar la llave maestra de la base.
+ *
+ * `service_role` pasa por encima de RLS, y por eso la única forma de llegar
+ * acá es a través de un Server Component o una Server Action — y a esos sólo
+ * se llega con la cookie de sesión válida, que revisa `proxy.ts`.
  */
 export async function createClient() {
-  const cookieStore = await cookies();
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const llave = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          try {
-            for (const { name, value, options } of cookiesToSet) {
-              cookieStore.set(name, value, options);
-            }
-          } catch {
-            // Los Server Components no pueden escribir cookies. Es esperable:
-            // el middleware ya se encarga de refrescar la sesión.
-          }
-        },
-      },
+  if (!url || !llave) {
+    throw new Error(
+      "Faltan NEXT_PUBLIC_SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en las variables de entorno.",
+    );
+  }
+
+  return crearClienteSupabase(url, llave, {
+    auth: {
+      // No hay usuarios: no hay sesión que persistir ni token que refrescar.
+      persistSession: false,
+      autoRefreshToken: false,
     },
-  );
+  });
 }

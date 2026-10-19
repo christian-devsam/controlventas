@@ -4,6 +4,13 @@ import type { Cliente, Planta, Promocion } from "@/lib/types";
 
 export const metadata = { title: "Vender · Plantas de Camila" };
 
+/* Obligatorio. Hasta que el acceso pasó a PIN, esta página era dinámica "de
+   rebote", porque leer la sesión llamaba a `cookies()`. Ahora no lee cookies,
+   así que Next la prerenderizaría UNA vez durante el build y serviría
+   siempre ese HTML: el stock quedaría congelado en los números del día del
+   deploy. */
+export const dynamic = "force-dynamic";
+
 export default async function PaginaVender() {
   const supabase = await createClient();
 
