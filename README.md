@@ -99,16 +99,18 @@ Queda como una app, sin barra de direcciones.
 
 ### El logo
 
-Guardá la imagen del logo como **`public/logo.png`** (cuadrada, idealmente
-512×512). La app la toma automáticamente para la pantalla de entrada, la
+Está en `public/logo.png` (1254×1254) y lo usan la pantalla de entrada, la
 cabecera y el ícono de la pantalla de inicio.
 
-Mientras el archivo no esté, se dibuja un emblema de reserva en SVG con los
-mismos colores, así nada se ve roto.
+Pesa 2,7 MB, pero en la app eso no se nota: `next/image` lo sirve redimensionado
+(y en WebP si el navegador lo acepta). Medido en local: 2.720 KB → 100 KB, un
+96% menos. La excepción es el ícono de la pantalla de inicio, que el sistema
+operativo descarga tal cual.
 
-Si tenés una versión con **sólo el emblema circular** (sin la foto), usá esa:
-como ícono de app se recorta a un cuadrado chico, y una ilustración completa
-queda ilegible a ese tamaño.
+Si en algún momento querés mejorarlo, una versión con **sólo el emblema
+circular** (sin la ilustración) se vería mejor a tamaño chico: en la cabecera se
+muestra a 34px, y a ese tamaño una ilustración completa es una mancha.
+Cambiando el archivo alcanza, no hay que tocar código.
 
 ---
 
