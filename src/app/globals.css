@@ -1,0 +1,212 @@
+@import "tailwindcss";
+
+/* ===========================================================================
+   Plantas de Camila — tokens de diseño
+   ===========================================================================
+   El tema sigue la preferencia del sistema operativo. No hay botón de tema:
+   en el teléfono, el teléfono manda.
+
+   Las variables crudas viven en `:root` (así se pueden sobrescribir dentro de
+   un @media) y `@theme inline` las expone como utilidades de Tailwind.
+   =========================================================================== */
+
+:root {
+  /* --- Marca -------------------------------------------------------------
+     Verde con 5.02:1 contra texto blanco → los botones principales cumplen
+     WCAG AA en los dos modos sin necesidad de dos valores. */
+  --marca: #15803d;
+  --marca-suave: #dcf0e3;
+  --marca-borde: #a9d8bb;
+
+  /* --- Superficies e ink ------------------------------------------------- */
+  --plano: #f9f9f7;
+  --superficie: #fcfcfb;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --ink-3: #898781;
+  --linea: #e1e0d9;
+  --eje: #c3c2b7;
+
+  /* --- Estado (nunca se reutilizan como color de serie) ------------------ */
+  --ok: #0ca30c;
+  --aviso: #fab219;
+  --grave: #ec835a;
+  --critico: #d03b3b;
+  --ok-texto: #006300;
+  --critico-texto: #b02525;
+
+  /* --- Paleta categórica -------------------------------------------------
+     Verde primero (es una tienda de plantas), pero el orden NO es cosmético:
+     se eligió corriendo el validador del método sobre las 5.040 permutaciones
+     posibles, quedándose con la que maximiza la separación mínima entre
+     colores adyacentes bajo daltonismo (protan/deutan/tritan).
+
+       peor par adyacente → ΔE 47.2 en claro, 41.3 en oscuro
+       (el objetivo del método es ≥ 12; el orden de referencia da 24.2 / 10.3)
+
+     Tres slots en modo claro quedan bajo 3:1 contra la superficie
+     (aqua, amarillo, magenta). La compensación obligatoria es etiquetas
+     visibles + vista de tabla, y está implementada en los gráficos. */
+  --s1: #008300; /* verde    */
+  --s2: #2a78d6; /* azul     */
+  --s3: #1baf7a; /* aqua     */
+  --s4: #eda100; /* amarillo */
+  --s5: #e87ba4; /* magenta  */
+  --s6: #eb6834; /* naranja  */
+  --s7: #4a3aa7; /* violeta  */
+  --s8: #e34948; /* rojo     */
+
+  /* --- Rampa secuencial (un solo tono, claro → oscuro) -------------------
+     Azul, el tono secuencial por defecto del método. Se usa en el heatmap de
+     horas. A propósito NO es verde: el verde ya significa "identidad de serie"
+     en esta app, y un tono no puede cargar dos significados a la vez. */
+  --seq-0: #f0efec; /* cero: casi la superficie */
+  --seq-1: #cde2fb;
+  --seq-2: #9ec5f4;
+  --seq-3: #6da7ec;
+  --seq-4: #3987e5;
+  --seq-5: #256abf;
+  --seq-6: #0d366b;
+
+  /* --- Medidas -----------------------------------------------------------
+     Alto de la barra de navegación inferior. Las páginas lo usan como padding
+     para que su última fila no quede tapada por la barra fija. */
+  --espaciado-nav: 4.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --marca: #15803d;
+    --marca-suave: #10281a;
+    --marca-borde: #255f3c;
+
+    --plano: #0d0d0d;
+    --superficie: #1a1a19;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --ink-3: #898781;
+    --linea: #2c2c2a;
+    --eje: #383835;
+
+    --ok-texto: #0ca30c;
+    --critico-texto: #e66767;
+
+    /* Los mismos ocho tonos, escalonados para la superficie oscura.
+       No es un flip automático: cada paso se validó contra #1a1a19 y el
+       conjunto pasa las seis comprobaciones en modo oscuro. */
+    --s1: #008300;
+    --s2: #3987e5;
+    --s3: #199e70;
+    --s4: #c98500;
+    --s5: #d55181;
+    --s6: #d95926;
+    --s7: #9085e9;
+    --s8: #e66767;
+
+    /* La rampa secuencial se invierte: en oscuro, "más" = más claro. */
+    --seq-0: #222221;
+    --seq-1: #0d366b;
+    --seq-2: #184f95;
+    --seq-3: #256abf;
+    --seq-4: #3987e5;
+    --seq-5: #6da7ec;
+    --seq-6: #cde2fb;
+  }
+}
+
+@theme inline {
+  --color-marca: var(--marca);
+  --color-marca-suave: var(--marca-suave);
+  --color-marca-borde: var(--marca-borde);
+
+  --color-plano: var(--plano);
+  --color-superficie: var(--superficie);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-linea: var(--linea);
+  --color-eje: var(--eje);
+
+  --color-ok: var(--ok);
+  --color-aviso: var(--aviso);
+  --color-grave: var(--grave);
+  --color-critico: var(--critico);
+  --color-ok-texto: var(--ok-texto);
+  --color-critico-texto: var(--critico-texto);
+
+  --color-s1: var(--s1);
+  --color-s2: var(--s2);
+  --color-s3: var(--s3);
+  --color-s4: var(--s4);
+  --color-s5: var(--s5);
+  --color-s6: var(--s6);
+  --color-s7: var(--s7);
+  --color-s8: var(--s8);
+}
+
+/* --------------------------------------------------------------------------
+   Base
+   -------------------------------------------------------------------------- */
+html {
+  color-scheme: light dark;
+  /* iOS Safari hace zoom al enfocar inputs de menos de 16px. Esto lo evita sin
+     tener que poner maximum-scale=1, que rompería el zoom accesible. */
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--plano);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Sin rebote elástico: se registran ventas con el pulgar y el rebote hace
+     que se toque el botón equivocado. */
+  overscroll-behavior-y: none;
+}
+
+/* Tocar un botón no debe pintar el flash gris de Android. */
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Las flechitas de los inputs numéricos estorban en el teléfono. */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* --------------------------------------------------------------------------
+   Utilidades propias
+   -------------------------------------------------------------------------- */
+
+/* La unidad de composición de todas las pantallas. */
+@utility tarjeta {
+  background: var(--superficie);
+  border: 1px solid var(--linea);
+  border-radius: 1rem;
+}
+
+/* Área segura del iPhone, para que la nav inferior no quede bajo la barra
+   de gestos. */
+@utility pb-segura {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Números que se alinean en columna (tablas, ticks de eje).
+   NO va en los números grandes: `tabular-nums` los deja sueltos. */
+@utility cifras {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

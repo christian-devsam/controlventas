@@ -1,0 +1,17 @@
+node_modules/
+.next/
+out/
+build/
+.DS_Store
+
+# Variables de entorno — nunca subir las llaves reales
+.env
+.env.local
+.env*.local
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
