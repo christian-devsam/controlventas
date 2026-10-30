@@ -39,6 +39,70 @@ export type Cliente = {
   instagram: string | null;
   comuna: string | null;
   notas: string | null;
+  /** Sólo a estas clientas se les puede vender en cuotas. */
+  es_confianza: boolean;
+  limite_credito: number | null;
+  notas_credito: string | null;
+};
+
+/** Lo que necesita el selector de clienta en la pantalla de cobro. */
+export type ClienteParaCobro = Pick<
+  Cliente,
+  "id" | "nombre" | "telefono" | "es_confianza" | "limite_credito"
+>;
+
+export type FormaPago = "contado" | "cuotas";
+
+export type Cuota = {
+  id: string;
+  venta_id: string;
+  numero: number;
+  monto: number;
+  vence: string;
+};
+
+export type Pago = {
+  id: string;
+  venta_id: string;
+  monto: number;
+  metodo_pago: MetodoPago;
+  fecha: string;
+  nota: string | null;
+};
+
+/** Una venta a crédito con saldo abierto (vista `v_deudas`). */
+export type Deuda = {
+  venta_id: string;
+  folio: number;
+  fecha: string;
+  cliente_id: string | null;
+  cliente: string;
+  telefono: string | null;
+  es_confianza: boolean;
+  total: number;
+  pagado: number;
+  saldo: number;
+  vencido: number;
+  total_cuotas: number | null;
+  proxima_cuota: number | null;
+  proximo_vence: string | null;
+  proximo_monto: number | null;
+  dias_de_atraso: number | null;
+};
+
+/** Deuda agregada por clienta (vista `v_clientes_deuda`). */
+export type ClienteDeuda = {
+  cliente_id: string | null;
+  cliente: string;
+  telefono: string | null;
+  es_confianza: boolean;
+  ventas_abiertas: number;
+  deuda_total: number;
+  vencido_total: number;
+  proximo_vence: string | null;
+  peor_atraso: number | null;
+  limite_credito: number | null;
+  cupo_disponible: number | null;
 };
 
 export const CANALES = ["tienda", "web", "whatsapp", "instagram", "feria"] as const;
@@ -70,6 +134,7 @@ export type Venta = {
   cliente_id: string | null;
   canal: Canal;
   metodo_pago: MetodoPago;
+  forma_pago: FormaPago;
   subtotal: number;
   descuento_total: number;
   total: number;
@@ -84,6 +149,8 @@ export type VentaItem = {
   cantidad: number;
   precio_unitario: number;
   precio_lista: number;
+  /** Costo congelado al vender. `null` = la planta no tenía costo cargado. */
+  costo_unitario: number | null;
   promocion_id: string | null;
   subtotal: number;
 };

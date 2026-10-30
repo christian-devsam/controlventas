@@ -43,8 +43,14 @@ export default function FilaVenta({ venta }: { venta: VentaDetalle }) {
         </div>
         <div className="text-right">
           <p className="cifras text-base font-semibold">{clp(venta.total)}</p>
-          {venta.descuento_total > 0 && (
-            <p className="cifras text-xs text-marca">−{clp(venta.descuento_total)}</p>
+          {venta.forma_pago === "cuotas" ? (
+            /* Sin esto, una venta en cuotas y una al contado se ven idénticas
+               en el historial, y el total engaña: esa plata todavía no entró. */
+            <p className="text-xs font-medium text-grave">en cuotas</p>
+          ) : (
+            venta.descuento_total > 0 && (
+              <p className="cifras text-xs text-marca">−{clp(venta.descuento_total)}</p>
+            )
           )}
         </div>
         <span className="text-ink-3" aria-hidden="true">

@@ -14,7 +14,7 @@ export default function FilaKPIs({ kpis, dias }: { kpis: FilaKpis; dias: number 
   return (
     <section className="mt-4" aria-label={`Resumen de los últimos ${dias} días`}>
       <div className="tarjeta p-5">
-        <p className="text-sm text-ink-2">Ingresos · últimos {dias} días</p>
+        <p className="text-sm text-ink-2">Vendido · últimos {dias} días</p>
 
         {/* Cifra héroe: sin `tabular-nums`, que a este tamaño deja los dígitos
             flotando separados. */}
@@ -40,9 +40,47 @@ export default function FilaKPIs({ kpis, dias }: { kpis: FilaKpis; dias: number 
             Sin datos del período anterior para comparar.
           </p>
         )}
+
+        {/* VENDIDO ≠ COBRADO. Con ventas en cuotas los dos números se separan,
+            y mostrar sólo el de arriba haría creer que hay plata en la caja
+            que todavía no llegó. Esta línea es la que evita ese error. */}
+        {kpis.por_cobrar > 0 && (
+          <dl className="mt-4 flex gap-5 border-t border-linea pt-3 text-sm">
+            <div>
+              <dt className="text-xs text-ink-2">Entró a la caja</dt>
+              <dd className="cifras mt-0.5 font-semibold">{clp(kpis.cobrado)}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-ink-2">Te deben</dt>
+              <dd
+                className={`cifras mt-0.5 font-semibold ${
+                  kpis.vencido > 0 ? "text-critico-texto" : ""
+                }`}
+              >
+                {clp(kpis.por_cobrar)}
+                {kpis.vencido > 0 && (
+                  <span className="ml-1 text-xs font-normal">
+                    ({clp(kpis.vencido)} vencido)
+                  </span>
+                )}
+              </dd>
+            </div>
+          </dl>
+        )}
       </div>
 
       <dl className="mt-2 grid grid-cols-2 gap-2">
+        <Tile
+          etiqueta="Utilidad"
+          valor={clp(kpis.utilidad)}
+          nota={
+            kpis.unidades_sin_costo > 0
+              ? `parcial · ${kpis.unidades_sin_costo} sin costo`
+              : kpis.ingresos > 0
+                ? `${Math.round((kpis.utilidad / kpis.ingresos) * 100)}% de margen`
+                : "—"
+          }
+        />
         <Tile etiqueta="Hoy" valor={clp(kpis.ingresos_hoy)} nota={`${kpis.ventas_hoy} ventas`} />
         <Tile
           etiqueta="Ticket promedio"
@@ -53,15 +91,6 @@ export default function FilaKPIs({ kpis, dias }: { kpis: FilaKpis; dias: number 
           etiqueta="Plantas vendidas"
           valor={numero(kpis.unidades)}
           nota={`en ${dias} días`}
-        />
-        <Tile
-          etiqueta="Descuentos dados"
-          valor={clp(kpis.descuentos)}
-          nota={
-            kpis.ingresos + kpis.descuentos > 0
-              ? `${Math.round((kpis.descuentos / (kpis.ingresos + kpis.descuentos)) * 100)}% del precio de lista`
-              : "—"
-          }
         />
       </dl>
     </section>

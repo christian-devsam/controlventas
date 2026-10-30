@@ -3,8 +3,11 @@
 App de registro de ventas pensada para usarse **con una mano, desde el celular,
 mientras hay una clienta esperando**. Puente Alto.
 
-Stack: Next.js 16 (App Router) · Supabase (Postgres + Auth) · Tailwind 4 ·
+Stack: Next.js 16 (App Router) · Supabase (Postgres) · Tailwind 4 ·
 Recharts · deploy en Vercel.
+
+No usa Supabase Auth: el acceso es por PIN y la base sólo se toca desde el
+servidor (ver §1 c-bis).
 
 ---
 
@@ -23,6 +26,8 @@ Entrá a **Supabase → SQL Editor → New query** y pegá los archivos de
 | `0004_funciones.sql` | Guardar venta, anular, mover stock |
 | `0005_panel.sql` | Agregados del dashboard por período |
 | `0006_acceso.sql` | Cierra el acceso directo a la base y arma el freno de intentos |
+| `0007_cuotas_y_utilidad.sql` | Cuotas, pagos, clientas de confianza, costo congelado |
+| `0008_funciones_cuotas.sql` | Registrar venta en cuotas, abonos y reportes de utilidad |
 
 > No uso el connection string directo (`db.<proyecto>.supabase.co:5432`) a
 > propósito. Desde Vercel cada función serverless abriría su propia conexión y
@@ -117,9 +122,11 @@ Cambiando el archivo alcanza, no hay que tocar código.
 ## 2. El modelo de datos
 
 ```
-plantas ──┐
-          ├─< venta_items >── ventas ──> clientes
-promociones┘        │
+plantas ──┐                          ┌──> cuotas    (lo que se espera cobrar)
+          ├─< venta_items >── ventas ─┤
+promociones┘        │                └──> pagos     (lo que realmente entró)
+                    │                 │
+                    │                 └──> clientes (es_confianza, cupo)
                     └──> movimientos_stock
 ```
 
@@ -171,6 +178,7 @@ triggers desde las líneas — así no hay forma de guardar una venta descuadrad
 | `/entrar` | PIN de 4 dígitos. Se ve una vez por teléfono. |
 | `/vender` | Registrar la venta. Es la pantalla de arranque. |
 | `/ventas` | Historial por día, con detalle y anulación. |
+| `/deudas` | Quién debe, cuánto, y registrar abonos. |
 | `/plantas` | Catálogo, precios, stock, reposición. |
 | `/dashboard` | Los números. |
 
@@ -191,6 +199,65 @@ Decisiones de uso móvil que no se ven pero se notan:
 
 ---
 
+## 3-bis. Ventas en cuotas
+
+Vender fiado es prestar plata, y el diseño lo trata así.
+
+**Sólo a clientas marcadas de confianza.** La opción "En cuotas" no deja
+avanzar si no hay una clienta elegida, o si la elegida no tiene la marca.
+Marcarla es un acto aparte y explícito, con un botón que dice qué significa —
+no se activa de taquito como efecto secundario de cobrar. Opcionalmente se le
+puede poner un cupo máximo de deuda.
+
+**El plan y los pagos son dos cosas distintas.** `cuotas` es lo que se
+*espera*; `pagos` es lo que *pasó*. Y los pagos **no se atan a una cuota
+puntual**: en la vida real nadie dice "esto es para la cuota 2", dice "te abono
+$5.000". El saldo es `total − pagado`, y en qué cuota va se deduce buscando la
+primera cuyo monto acumulado supera lo abonado. Obligar a elegir la cuota sería
+pedirle a Camila que decida algo que no le importa.
+
+**El reparto no deja pesos colgando.** Al dividir $10.000 en 3, el resto se
+suma de a un peso a las primeras cuotas: 3.334 / 3.333 / 3.333. Si no, faltaría
+un peso y la deuda nunca llegaría a cero. El mismo reparto está implementado dos
+veces —en Postgres, que es el que manda, y en TypeScript para la vista previa—
+y hay tests que verifican que coincidan.
+
+### Vendido no es cobrado
+
+Este es el punto que más fácil se arruina. Si una venta en cuotas sumara a
+"Ingresos", el panel mostraría plata que todavía no está en la caja.
+
+Por eso el dashboard separa tres números:
+
+- **Vendido** — lo que se facturó en el período (devengado)
+- **Entró a la caja** — pagos recibidos más las ventas al contado (percibido)
+- **Te deben** — saldo abierto, con lo vencido aparte
+
+En el historial, una venta a crédito lleva la etiqueta "en cuotas" para que no
+se confunda con una al contado del mismo monto.
+
+---
+
+## 3-ter. Utilidad
+
+`venta_items` guarda `costo_unitario`, copiado de la planta **al momento de
+vender**. Es la misma razón por la que ya se congelaba `precio_lista`: si la
+utilidad se calculara contra `plantas.costo` actual, cada vez que el vivero
+sube los precios se reescribiría la ganancia de todas las ventas viejas.
+
+La tarjeta "Qué deja plata" trae los dos rankings que pide el negocio —mayor
+utilidad y más vendida— **en la misma tabla, con un interruptor**. Están juntos
+a propósito: la pregunta interesante no es cada lista por separado, es la
+diferencia entre ellas. La planta que encabeza ventas y no aparece en utilidad
+es la que se vende mucho para ganar poco, y dos tarjetas separadas esconderían
+justamente eso. Cuando difieren, la app lo dice con todas las letras.
+
+**Las plantas sin costo cargado no inventan margen.** Quedan fuera del cálculo
+y se informa cuántas unidades son. Asumir costo cero mostraría un margen del
+100% que es, en realidad, un dato que falta.
+
+---
+
 ## 4. Los gráficos
 
 Cada uno existe para responder una pregunta concreta. El selector de período
@@ -199,7 +266,8 @@ dos tarjetas mostrando rangos distintos.
 
 | Gráfico | Pregunta que responde |
 |---|---|
-| Ingresos del período (cifra grande + % vs. período anterior) | ¿Estoy creciendo? |
+| Vendido del período (cifra grande + % vs. período anterior) | ¿Estoy creciendo? |
+| Qué deja plata (utilidad / más vendidas) | ¿Qué me conviene vender? |
 | Línea de ingresos por día | ¿Qué días se cayó y por qué? |
 | Barras de top plantas | ¿Qué vender más y qué dejar de traer? |
 | Barra apilada por categoría | ¿En qué rubro está la plata? |
@@ -273,38 +341,35 @@ confiables — y si no cuadran, avisa temprano.
 `wa.me` con un mensaje listo convierte ese dato en una venta. Costo cero, y
 recuperar una clienta cuesta mucho menos que conseguir una nueva.
 
-**4. Registrar gastos.** Hoy la app mide ingresos, no utilidad. Con los gastos
+**4. Registrar gastos.** La app ya calcula la utilidad por planta, pero esa es
+la ganancia *bruta*: no descuenta lo que no es mercadería. Con los gastos
 (compra de plantas, maceteros, arriendo, locomoción) el dashboard puede decir
 cuánta plata quedó de verdad, que es la pregunta que importa.
 
 ### Cuando haya unos meses de datos
 
-**5. Margen real por planta.** La columna `costo` ya existe en la base y el
-formulario ya la pide; falta la pantalla que cruce ingresos con costo. Casi
-siempre aparece una sorpresa: la planta estrella no es la más rentable.
-
-**6. Qué traer la próxima temporada.** Con un año de ventas se puede ver la
+**5. Qué traer la próxima temporada.** Con un año de ventas se puede ver la
 estacionalidad real (interior en invierno, exterior en primavera) y anticipar la
 compra en vez de reaccionar.
 
-**7. Fotos en el catálogo.** Con Supabase Storage. Sirve para dos cosas:
+**6. Fotos en el catálogo.** Con Supabase Storage. Sirve para dos cosas:
 encontrar la planta más rápido en la grilla de venta, y tener el material para
 el sitio web sin sesión de fotos aparte.
 
 ### Más adelante
 
-**8. Catálogo público para mandar por WhatsApp.** Una página de solo lectura con
+**7. Catálogo público para mandar por WhatsApp.** Una página de solo lectura con
 stock y precios actuales, generada de la misma base. "Mirá lo que tengo" en un
 link, sin mantener dos inventarios.
 
-**9. Ficha de cuidados.** Qué riego y qué luz necesita cada planta, para mandar o
+**8. Ficha de cuidados.** Qué riego y qué luz necesita cada planta, para mandar o
 imprimir con la compra. Diferencia frente a quien vende plantas sin más, y
 reduce la planta que se muere en dos semanas y la clienta que no vuelve.
 
-**10. Agenda de encargos.** El campo de notas ya recoge cosas como "pasa el
+**9. Agenda de encargos.** El campo de notas ya recoge cosas como "pasa el
 viernes". Convertirlas en recordatorios cierra el círculo.
 
-**11. Exportar a Excel.** Para el contador y para el SII.
+**10. Exportar a Excel.** Para el contador y para el SII.
 
 ---
 
@@ -315,15 +380,21 @@ Honestidad sobre qué está probado y qué no:
 | | |
 |---|---|
 | ✅ `tsc --noEmit` | sin errores |
-| ✅ `npm run build` | compila; las 4 pantallas de datos salen dinámicas |
+| ✅ `npm run build` | compila; las 5 pantallas de datos salen dinámicas |
 | ✅ Render en móvil (375×812) | `/entrar` entra sin scroll, 0 errores de consola |
-| ✅ Guardia de acceso | `/vender` sin cookie redirige a `/entrar` |
+| ✅ Guardia de acceso | `/vender` sin cookie redirige a `/entrar`; cookie firmada aceptada |
 | ✅ Teclado de PIN | 4 dígitos, autoenvío, error y recuperación probados |
+| ✅ Matemática de cuotas | 9 tests: suma exacta, reparto igual al de SQL, fin de mes, bisiesto |
+| ✅ Barra de 5 destinos | 75×56px cada uno, sobre el mínimo de 44px |
 | ✅ Tokens de color | medidos en el navegador en claro y oscuro |
 | ✅ Contraste del rosado | 4.72:1 medido en vivo sobre superficie clara |
 | ✅ Paleta categórica | validada con script en ambos modos |
 | ⚠️ **El SQL no se ejecutó nunca** | revisado a mano, no corrido contra Postgres |
-| ⚠️ **El flujo de venta no se probó end-to-end** | falta la service_role key real |
+| ⚠️ **Los flujos no se probaron end-to-end** | falta la service_role key real |
 
-Los dos puntos amarillos se cierran igual: aplicá las migraciones y registrá una
-venta de prueba. Si algo falla, va a ser en el SQL.
+Los dos puntos amarillos se cierran igual: aplicá las migraciones y hacé una
+prueba. Si algo falla, va a ser en el SQL.
+
+Para probar cuotas de punta a punta: vendé algo a una clienta nueva en 3 cuotas
+con un abono, fijate que aparezca en `/deudas` con el saldo correcto, registrá
+un abono y comprobá que el saldo baje y que la "próxima cuota" avance.
