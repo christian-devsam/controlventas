@@ -7,6 +7,7 @@ import GraficoTopPlantas from "./GraficoTopPlantas";
 import GraficoCategorias from "./GraficoCategorias";
 import MapaHorario from "./MapaHorario";
 import TablaPromociones from "./TablaPromociones";
+import TablaUtilidad from "./TablaUtilidad";
 import EstadoActual from "./EstadoActual";
 import type {
   FilaCategoria,
@@ -15,6 +16,7 @@ import type {
   FilaPromocion,
   FilaSerie,
   FilaTopPlanta,
+  FilaUtilidad,
 } from "./tipos";
 
 export const metadata = { title: "Números · Plantas de Camila" };
@@ -36,20 +38,31 @@ export default async function PaginaDashboard({
 
   // Ocho consultas en paralelo. Encadenadas serían ocho viajes de ida y vuelta
   // al servidor; así es uno solo (el más lento).
-  const [kpis, serie, topPlantas, categorias, mapa, promos, reponer, clientas, catalogo] =
-    await Promise.all([
-      supabase.rpc("panel_kpis", { p_dias: dias }).single<FilaKpis>(),
-      supabase.rpc("panel_serie_diaria", { p_dias: dias }),
-      supabase.rpc("panel_top_plantas", { p_dias: dias, p_limite: 8 }),
-      supabase.rpc("panel_categorias", { p_dias: dias }),
-      supabase.rpc("panel_mapa_horario", { p_dias: 90 }),
-      supabase.rpc("panel_promociones", { p_dias: dias }),
-      supabase.from("v_stock_alerta").select("*").limit(10),
-      supabase.from("v_clientes_top").select("*").limit(8),
-      supabase.from("plantas").select("categoria"),
-    ]);
+  const [
+    kpis,
+    serie,
+    topPlantas,
+    categorias,
+    mapa,
+    promos,
+    utilidad,
+    reponer,
+    clientas,
+    catalogo,
+  ] = await Promise.all([
+    supabase.rpc("panel_kpis", { p_dias: dias }).single<FilaKpis>(),
+    supabase.rpc("panel_serie_diaria", { p_dias: dias }),
+    supabase.rpc("panel_top_plantas", { p_dias: dias, p_limite: 8 }),
+    supabase.rpc("panel_categorias", { p_dias: dias }),
+    supabase.rpc("panel_mapa_horario", { p_dias: 90 }),
+    supabase.rpc("panel_promociones", { p_dias: dias }),
+    supabase.rpc("panel_utilidad", { p_dias: dias, p_limite: 50 }),
+    supabase.from("v_stock_alerta").select("*").limit(10),
+    supabase.from("v_clientes_top").select("*").limit(8),
+    supabase.from("plantas").select("categoria"),
+  ]);
 
-  const errores = [kpis, serie, topPlantas, categorias, mapa, promos]
+  const errores = [kpis, serie, topPlantas, categorias, mapa, promos, utilidad]
     .map((r) => r.error?.message)
     .filter(Boolean);
 
@@ -59,9 +72,9 @@ export default async function PaginaDashboard({
         <div className="tarjeta p-5 text-sm">
           <p className="font-semibold">No se pudieron calcular los números</p>
           <p className="mt-2 text-ink-2">
-            Lo más probable es que falte aplicar las migraciones{" "}
-            <code>0004_funciones.sql</code> y <code>0005_panel.sql</code> en el editor
-            SQL de Supabase.
+            Lo más probable es que falte aplicar alguna migración de{" "}
+            <code>supabase/migrations/</code> en el editor SQL de Supabase. Van en
+            orden, de la 0001 a la 0008.
           </p>
           <ul className="mt-3 space-y-1 text-xs text-ink-3">
             {errores.map((e) => (
@@ -111,6 +124,9 @@ export default async function PaginaDashboard({
         </div>
       ) : (
         <div className="mt-4 space-y-4">
+          {/* La utilidad va arriba de todo: vender mucho y ganar poco es el
+              problema más caro y el que menos se ve. */}
+          <TablaUtilidad datos={(utilidad.data ?? []) as FilaUtilidad[]} dias={dias} />
           <GraficoIngresos datos={serieDatos} dias={dias} />
           <GraficoTopPlantas datos={(topPlantas.data ?? []) as FilaTopPlanta[]} />
           <GraficoCategorias

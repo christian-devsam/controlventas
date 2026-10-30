@@ -6,14 +6,18 @@ import { usePathname } from "next/navigation";
 const RUTAS = [
   { href: "/vender", etiqueta: "Vender", icono: "🛒" },
   { href: "/ventas", etiqueta: "Ventas", icono: "🧾" },
+  { href: "/deudas", etiqueta: "Deudas", icono: "💰" },
   { href: "/plantas", etiqueta: "Plantas", icono: "🪴" },
   { href: "/dashboard", etiqueta: "Números", icono: "📈" },
 ] as const;
 
 /**
  * Navegación fija abajo: en un teléfono, la parte de arriba de la pantalla
- * queda lejos del pulgar. Cuatro destinos como máximo — más que eso y los
- * objetivos se hacen demasiado angostos para tocar sin errarle.
+ * queda lejos del pulgar.
+ *
+ * Cinco destinos es el techo. En la pantalla más angosta que importa (375px)
+ * cada uno queda en 75px de ancho y 56px de alto, todavía por encima del
+ * mínimo de 44px para tocar sin errarle. Un sexto ya no entraría.
  */
 export default function BarraNav() {
   const pathname = usePathname();
