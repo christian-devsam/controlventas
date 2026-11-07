@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import RegistrarVenta from "./RegistrarVenta";
-import type { Cliente, Planta, Promocion } from "@/lib/types";
+import type { ClienteParaCobro, Planta, Promocion } from "@/lib/types";
 
 export const metadata = { title: "Vender · Plantas de Camila" };
 
@@ -24,7 +24,14 @@ export default async function PaginaVender() {
       .order("categoria")
       .order("nombre"),
     supabase.from("promociones").select("*").eq("activa", true).order("nombre"),
-    supabase.from("clientes").select("id,nombre,telefono").order("nombre").limit(300),
+    supabase
+      .from("clientes")
+      .select("id,nombre,telefono,es_confianza,limite_credito")
+      // Las de confianza primero: son a las que hay que encontrar rápido
+      // cuando alguien pide fiado.
+      .order("es_confianza", { ascending: false })
+      .order("nombre")
+      .limit(300),
   ]);
 
   if (plantas.error) {
@@ -46,7 +53,7 @@ export default async function PaginaVender() {
     <RegistrarVenta
       plantas={(plantas.data ?? []) as Planta[]}
       promociones={(promociones.data ?? []) as Promocion[]}
-      clientes={(clientes.data ?? []) as Pick<Cliente, "id" | "nombre" | "telefono">[]}
+      clientes={(clientes.data ?? []) as ClienteParaCobro[]}
     />
   );
 }

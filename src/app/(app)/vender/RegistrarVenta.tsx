@@ -2,13 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { clp, normalizar } from "@/lib/format";
-import type { Cliente, ItemCarrito, Planta, Promocion } from "@/lib/types";
+import type { ClienteParaCobro, ItemCarrito, Planta, Promocion } from "@/lib/types";
 import HojaCobro from "./HojaCobro";
 
 type Props = {
   plantas: Planta[];
   promociones: Promocion[];
-  clientes: Pick<Cliente, "id" | "nombre" | "telefono">[];
+  clientes: ClienteParaCobro[];
 };
 
 const TODAS = "Todas";
@@ -73,11 +73,15 @@ export default function RegistrarVenta({ plantas, promociones, clientes }: Props
     });
   }
 
-  function alCobrar(folio: number, montoCobrado: number) {
+  function alCobrar(folio: number, montoCobrado: number, saldo: number) {
     setCarrito([]);
     setCobrando(false);
     setBusqueda("");
-    setConfirmacion(`Venta #${folio} guardada · ${clp(montoCobrado)}`);
+    setConfirmacion(
+      saldo > 0
+        ? `Venta #${folio} · queda debiendo ${clp(saldo)}`
+        : `Venta #${folio} guardada · ${clp(montoCobrado)}`,
+    );
     // El aviso se va solo: no hay que tocar nada para seguir vendiendo.
     if (temporizadorAviso.current) clearTimeout(temporizadorAviso.current);
     temporizadorAviso.current = setTimeout(() => setConfirmacion(null), 3500);

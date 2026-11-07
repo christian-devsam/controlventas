@@ -9,20 +9,22 @@ import {
   ETIQUETAS_PAGO,
   METODOS_PAGO,
   type Canal,
-  type Cliente,
+  type ClienteParaCobro,
+  type FormaPago,
   type ItemCarrito,
   type MetodoPago,
   type Promocion,
 } from "@/lib/types";
 import { registrarVenta } from "./acciones";
+import SeccionCuotas from "./SeccionCuotas";
 
 type Props = {
   carrito: ItemCarrito[];
   setCarrito: React.Dispatch<React.SetStateAction<ItemCarrito[]>>;
   promociones: Promocion[];
-  clientes: Pick<Cliente, "id" | "nombre" | "telefono">[];
+  clientes: ClienteParaCobro[];
   onCerrar: () => void;
-  onGuardada: (folio: number, total: number) => void;
+  onGuardada: (folio: number, total: number, saldo: number) => void;
 };
 
 export default function HojaCobro({
@@ -42,9 +44,20 @@ export default function HojaCobro({
   const [error, setError] = useState<string | null>(null);
   const [editandoPromo, setEditandoPromo] = useState<string | null>(null);
 
+  const [forma, setForma] = useState<FormaPago>("contado");
+  const [cuotas, setCuotas] = useState(3);
+  const [abono, setAbono] = useState(0);
+  const [primerVence, setPrimerVence] = useState("");
+
   const total = carrito.reduce((s, i) => s + i.cantidad * i.precio_unitario, 0);
   const lista = carrito.reduce((s, i) => s + i.cantidad * i.precio_lista, 0);
   const descuento = Math.max(0, lista - total);
+
+  const clienteElegido = clientes.find((c) => c.id === clienteId) ?? null;
+  const enCuotas = forma === "cuotas";
+  const puedeFiar = Boolean(clienteElegido?.es_confianza) || clienteNuevo.trim().length > 0;
+  // En cuotas, el botón sólo se habilita si la puerta de confianza está abierta.
+  const listoParaCobrar = carrito.length > 0 && (!enCuotas || puedeFiar);
 
   // Cerrar con Escape — gratis en escritorio, no molesta en el teléfono.
   useEffect(() => {
@@ -105,6 +118,9 @@ export default function HojaCobro({
       cliente_id: clienteId || null,
       cliente_nombre: clienteId ? null : clienteNuevo.trim() || null,
       notas: notas.trim() || null,
+      cuotas: enCuotas ? cuotas : 0,
+      abono_inicial: enCuotas ? abono : 0,
+      primer_vence: enCuotas ? primerVence || null : null,
     });
 
     if (!resultado.ok) {
@@ -113,7 +129,7 @@ export default function HojaCobro({
       return;
     }
 
-    onGuardada(resultado.folio, resultado.total);
+    onGuardada(resultado.folio, resultado.total, resultado.saldo);
   }
 
   return (
@@ -323,6 +339,9 @@ export default function HojaCobro({
                 {clientes.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.nombre}
+                    {/* El ✓ marca a quién se le puede fiar, visible ya en la
+                        lista: así no hay que elegirla para recién enterarse. */}
+                    {c.es_confianza ? "  ✓ confianza" : ""}
                   </option>
                 ))}
               </select>
@@ -341,6 +360,23 @@ export default function HojaCobro({
               </p>
             </div>
           </Grupo>
+
+          {/* Va justo después de la clienta y no antes: para fiar hay que saber
+              a quién, así que el orden de la pantalla sigue el orden de la
+              decisión. */}
+          <SeccionCuotas
+            total={total}
+            forma={forma}
+            setForma={setForma}
+            cuotas={cuotas}
+            setCuotas={setCuotas}
+            abono={abono}
+            setAbono={setAbono}
+            primerVence={primerVence}
+            setPrimerVence={setPrimerVence}
+            cliente={clienteElegido}
+            clienteNuevo={clienteNuevo}
+          />
 
           <Grupo titulo="Nota (opcional)">
             <input
@@ -372,6 +408,22 @@ export default function HojaCobro({
               <dt className="font-semibold">Total</dt>
               <dd className="text-2xl font-bold">{clp(total)}</dd>
             </div>
+
+            {/* En cuotas, el total NO es lo que entra a la caja. Separarlo acá
+                evita el malentendido más caro posible: creer que se cobró una
+                plata que todavía no llegó. */}
+            {enCuotas && puedeFiar && (
+              <>
+                <div className="flex justify-between border-t border-linea pt-1 text-ink-2">
+                  <dt>Entra hoy</dt>
+                  <dd className="cifras font-semibold">{clp(abono)}</dd>
+                </div>
+                <div className="flex justify-between text-grave">
+                  <dt>Queda debiendo</dt>
+                  <dd className="cifras font-semibold">{clp(total - abono)}</dd>
+                </div>
+              </>
+            )}
           </dl>
 
           {error && (
@@ -383,10 +435,16 @@ export default function HojaCobro({
           <button
             type="button"
             onClick={cobrar}
-            disabled={guardando || carrito.length === 0}
+            disabled={guardando || !listoParaCobrar}
             className="w-full rounded-xl bg-marca px-4 py-4 text-base font-bold text-white transition active:scale-[0.98] disabled:opacity-60"
           >
-            {guardando ? "Guardando…" : `Confirmar venta · ${clp(total)}`}
+            {guardando
+              ? "Guardando…"
+              : enCuotas && !puedeFiar
+                ? "Falta elegir a quién le fiás"
+                : enCuotas
+                  ? `Confirmar · ${cuotas} cuotas`
+                  : `Confirmar venta · ${clp(total)}`}
           </button>
         </div>
       </div>

@@ -10,6 +10,24 @@ export type FilaKpis = {
   ventas_previo: number;
   ingresos_hoy: number;
   ventas_hoy: number;
+  /** Plata que entró de verdad por caja en el período. */
+  cobrado: number;
+  /** Saldo abierto de todas las ventas en cuotas (no del período: total). */
+  por_cobrar: number;
+  vencido: number;
+  utilidad: number;
+  unidades_sin_costo: number;
+};
+
+export type FilaUtilidad = {
+  nombre_planta: string;
+  categoria: string;
+  unidades: number;
+  ingresos: number;
+  costo_total: number;
+  utilidad: number;
+  margen_pct: number;
+  unidades_sin_costo: number;
 };
 
 export type FilaSerie = {
